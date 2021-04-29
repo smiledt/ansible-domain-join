@@ -1,0 +1,8 @@
+---
+# Main playbook file for the domain-join role
+
+- name: Join new hosts to the domain.
+  hosts: ubuntu
+  become: true
+  roles:
+    - domain-join
