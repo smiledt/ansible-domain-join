@@ -1,92 +1,53 @@
 ---
-# tasks file for krb5_user
-# this task joins an ubuntu vm to the active directory domain
+# tasks file for domain-join
+# this task joins an ubuntu machine to the active directory domain
 - name: Include encrypted variables.
   include_vars: vault.yml
 
-- name: Install the kerberos client software necessary to join an ubuntu vm to the domain
-  apt:
-    name: ['krb5-user',  'samba', 'sssd', 'chrony', 'realmd', 'samba-common', 'packagekit', 'samba-common-bin', 'samba-libs', 'adcli', 'sssd-tools']
+- name: Install packages required to join an ubuntu vm to the domain
+  package:
+    name: "{{ item }}"
     state: present
-    update_cache: yes
-    cache_valid_time: 86400
+  with_items: "{{ required_packages }}"
 
-- name: Install pip on systems using versions of python previous to version 3
-  apt:
-    name: [ 'python-pip' ]
-    state: present
-  when: ansible_python_version is not match("3.*")
-
-- name: Install pip3 on systems using version 3 of python
-  apt:
-    name: [ 'python3-pip' ]
-    state: present
-  when: ansible_python_version is match("3.*")
-
-- name: Use pip to install pexpect
-  pip:
-    name: pexpect
-    state: present
-
-- name: Template out realmd.conf
-  template:
-    src: realmd.conf.j2
-    dest: /etc/realmd.conf
-    owner: root
-    group: root
-    mode: 0644
-
-- name: Template out krb5.conf
-  template:
-    src: krb5.conf.j2
-    dest: /etc/krb5.conf
-    owner: root
-    group: root
-    mode: 0644
-
-- name: Discover realm
-  command: /bin/bash -c "/usr/sbin/realm discover {{ krb5_default_realm }}"
+- name: Test active directory domain connection
+  shell: "realm discover {{ domain_name }}"
   register: realm_discover_results
   changed_when: false
 
 - name: Discover realm debug
   debug:
-    msg: "{{ realm_discover_results.stdout }}"
+    var: realm_discover_results
+    verbosity: 1
 
-- name: Create kerberos ticket
-  expect:
-    command: /bin/bash -c "/usr/bin/kinit -V {{ kerberos_user }}"
-    responses:
-      (?i)Password: "{{ kerberos_user_password }}"
-  changed_when: false
-
-# Check for existing AD
-- name: Checking to see if system is already joined to AD
-  command: /bin/bash -c "/usr/sbin/realm list"
+- name: Check to see if the system is already joined to AD
+  shell: "realm list"
   register: realm_list_results
   changed_when: false
 
 - name: Debug realm_list_results
   debug:
-    msg: "{{ realm_list_results.stdout }}"
+    var: realm_list_results
+    verbosity: 1
 
 - name: Join system to AD
   expect:
-    command: /bin/bash -c "/usr/sbin/realm join {{ krb5_default_realm }} --computer-ou='{{ realm_ad_ou }}' --user={{ kerberos_user }}"
+    command: /bin/bash -c "/usr/sbin/realm join {{ domain_name }} --user={{ ad_admin_user }} --computer-ou='{{ ad_computer_ou }}'"
     responses:
       (?i)Password: "{{ kerberos_user_password }}"
   register: join_results
-  ignore_errors: yes
   when: not realm_list_results.stdout
-  become: true
 
 #This debug step will only fire if the system needs to join the realm but fails
 - name: Debug join
   debug:
-    msg: "{{ join_results.stdout }}"
+    var: join_results
   when: not realm_list_results.stdout and join_results
 
-- name: Add domain admins group to sudoers.
+# Unfortunately the privilege escalation GPO is availalbe for Ubuntu Pro users only,
+# so we resort back to the good ol' sudoers file.
+#TODO: Figure out a way to variabalize the group
+- name: Add Ubuntu Admins group to sudoers.
   lineinfile:
     dest: /etc/sudoers
     state: present
@@ -94,19 +55,30 @@
     line: '%ubuntu\ admins ALL=(ALL:ALL) ALL'
     validate: 'visudo -cf %s'
 
-- name: Template out sssd.conf
-  template:
-    src: sssd.conf.j2
-    dest: /etc/sssd/sssd.conf
-    owner: root
-    group: root
-    mode: 0600
+- name: Change fully qualified domain name setting in sssd.conf
+  lineinfile:
+    path: "{{ sssd_conf_path }}"
+    regexp: use_fully_qualified_names
+    line: "use_fully_qualified_names = {{ use_fully_qualified_names }}"
   notify: Restart sssd
 
-- name: Template out pam common-session
-  template:
-    src: common-session.j2
-    dest: /etc/pam.d/common-session
-    owner: root
-    group: root
-    mode: 0644
+- name: Enable home folder creation for domain users (when configured)
+  shell: "pam-auth-update --enable mkdir"
+  when: home_folder_auto_creation
+  changed_when: false
+
+# Unfortunately the home folder creation isn't working for me, so create them manually
+- name: Create the home directories
+  file:
+    path: "/home/{{ item }}@{{ domain_name | lower }}"
+    owner: "{{ item }}"
+    group: "domain users"
+    mode: '0750'
+    state: directory
+  with_items: "{{ home_dir_users }}"
+  when: create_home_dirs
+
+- name: Finally, install krb5-user so that we can utilize kerberos tickets
+  package:
+    name: krb5-user
+    state: present
