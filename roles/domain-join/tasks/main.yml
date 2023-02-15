@@ -34,7 +34,7 @@
   expect:
     command: /bin/bash -c "/usr/sbin/realm join {{ domain_name }} --user={{ ad_admin_user }} --computer-ou='{{ ad_computer_ou }}'"
     responses:
-      (?i)Password: "{{ kerberos_user_password }}"
+      (?i)Password: "{{ ad_admin_password }}"
   register: join_results
   when: not realm_list_results.stdout
 
@@ -66,6 +66,9 @@
   shell: "pam-auth-update --enable mkdir"
   when: home_folder_auto_creation
   changed_when: false
+
+- name: Flush handlers to restart sssd if necessary
+  meta: flush_handlers
 
 # Unfortunately the home folder creation isn't working for me, so create them manually
 - name: Create the home directories

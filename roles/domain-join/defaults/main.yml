@@ -1,21 +1,5 @@
 ---
-# defaults file for krb5_user
-
-# Default domain admin password 
-kerberos_user_password: pass
-krb5_default_realm: DOMAIN.COM
-krb5_domain_controller: dc01.domain.com
-realm_domain: .DOMAIN.COM
-kerberos_user: admin
-ad_comoputer_ou: "CN=Computer,DC=domain,DC=com"
-realm_domain_lc: domain.com
-sssd_conf_path: /etc/sssd/sssd.conf
-home_folder_auto_creation: true
-use_fully_qualified_names: false
-
-# The pam config to create home directories is really hit or miss for me
-# I'm leaving it a separate varable for easy testing.
-create_home_dirs: "{{ home_folder_auto_creation }}"
+# defaults file for domain-join
 
 required_packages:
   - sssd-ad
@@ -23,3 +7,17 @@ required_packages:
   - realmd
   - adcli
   - adsys
+
+# Default domain admin password. CHANGE THIS!!!
+ad_admin_password: pass
+
+domain_name: DOMAIN.COM
+ad_admin_user: admin
+ad_computer_ou: "CN=Computer,DC=domain,DC=com"
+sssd_conf_path: /etc/sssd/sssd.conf
+home_folder_auto_creation: true
+use_fully_qualified_names: false
+
+# The pam config to create home directories is really hit or miss for me
+# I'm leaving it a separate varable for easy testing.
+create_home_dirs: "{{ home_folder_auto_creation }}"
