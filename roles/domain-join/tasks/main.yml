@@ -67,6 +67,9 @@
   when: home_folder_auto_creation
   changed_when: false
 
+- name: Flush handlers to restart sssd if necessary
+  meta: flush_handlers
+
 # Unfortunately the home folder creation isn't working for me, so create them manually
 - name: Create the home directories
   file:
