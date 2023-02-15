@@ -34,7 +34,7 @@
   expect:
     command: /bin/bash -c "/usr/sbin/realm join {{ domain_name }} --user={{ ad_admin_user }} --computer-ou='{{ ad_computer_ou }}'"
     responses:
-      (?i)Password: "{{ kerberos_user_password }}"
+      (?i)Password: "{{ ad_admin_password }}"
   register: join_results
   when: not realm_list_results.stdout
 

@@ -1,11 +1,11 @@
 ---
 
 # Domain admin password 
-kerberos_user_password: "{{ vault_domain_admin_pass }}"
+ad_admin_password: "{{ vault_domain_admin_pass }}"
 
 domain_name: PLUMBUS.LAB
 ad_admin_user: smiledt
-ad_computer_ou: "OU=Linux Computers,OU=Plumbus Labs,DC=plumbus,DC=lab"
+ad_computer_ou: "OU=Ubuntu,OU=Virtual Machines,OU=Plumbus Computers,OU=Plumbus Labs,DC=plumbus,DC=lab"
 
 home_dir_users:
   - smiledt
