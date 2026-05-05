@@ -70,16 +70,7 @@
 - name: Flush handlers to restart sssd if necessary
   meta: flush_handlers
 
-# Unfortunately the home folder creation isn't working for me, so create them manually
-- name: Create the home directories
-  file:
-    path: "/home/{{ item }}@{{ domain_name | lower }}"
-    owner: "{{ item }}"
-    group: "domain users"
-    mode: '0750'
-    state: directory
-  with_items: "{{ home_dir_users }}"
-  when: create_home_dirs
+
 
 - name: Finally, install krb5-user so that we can utilize kerberos tickets
   package:
